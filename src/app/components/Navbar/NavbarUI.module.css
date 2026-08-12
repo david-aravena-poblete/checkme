@@ -1,0 +1,74 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--navbar-height);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  z-index: 100;
+  transition: background var(--transition-normal);
+}
+
+.logo {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.logoAccent {
+  color: var(--accent);
+}
+
+.nav {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.navLink {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  color: var(--text-primary);
+}
+
+.authButton {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.authButton:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+@media (max-width: 640px) {
+  .navbar {
+    padding: 0 1rem;
+  }
+  .nav {
+    gap: 1rem;
+  }
+  .navLink {
+    font-size: 0.8rem;
+  }
+}
