@@ -1,19 +1,34 @@
 import styles from './DoubtCardUI.module.css';
 
-export default function DoubtCardUI({ title, content, authorName, date, responsesCount }) {
+export default function DoubtCardUI({ context, prompt, response, date, status }) {
+  // Truncate response text for preview
+  const truncatedResponse = response && response.length > 250 
+    ? response.substring(0, 250) + '...' 
+    : response;
+
   return (
     <article className={styles.card}>
-      <h3 className={styles.title}>{title}</h3>
-      <p className={styles.content}>{content}</p>
+      {/* Context (Acts as Title) */}
+      <h3 className={styles.contextText}>{context}</h3>
+      
+      {/* Prompt block */}
+      <div className={styles.promptBlock}>
+        <span className={styles.promptLabel}>Prompt</span>
+        <p className={styles.promptText}>{prompt}</p>
+      </div>
+      
+      {/* Response Preview */}
+      <div className={styles.responseBlock}>
+        <p className={styles.responseText}>{truncatedResponse}</p>
+      </div>
+      
+      {/* Metadata */}
       <div className={styles.meta}>
-        <span className={styles.author}>{authorName}</span>
-        <span className={styles.dot}>•</span>
         <span className={styles.date}>{date}</span>
-        {responsesCount > 0 && (
-          <span className={styles.responsesCount}>
-            💬 {responsesCount}
-          </span>
-        )}
+        <span className={styles.dot}>•</span>
+        <span className={`${styles.statusBadge} ${status === 'PENDING' ? styles.statusPending : ''}`}>
+          {status === 'PENDING' ? 'En Auditoría' : status}
+        </span>
       </div>
     </article>
   );

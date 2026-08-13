@@ -1,0 +1,48 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  background: rgba(22, 22, 31, 0.5); /* var(--bg-card) con opacidad */
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.iconWrapper {
+  font-size: 3rem;
+  opacity: 0.5;
+  margin-bottom: 1rem;
+}
+
+.title {
+  color: var(--text-primary);
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.message {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  max-width: 400px;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.ctaButton {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ctaButton:hover {
+  background: rgba(94, 138, 126, 0.1);
+}

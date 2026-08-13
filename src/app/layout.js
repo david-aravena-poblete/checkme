@@ -8,7 +8,7 @@ const inter = Inter({
 
 export const metadata = {
   title: 'CheckMe - Verifica la veracidad',
-  description: 'Portal para verificar la veracidad de respuestas e información. Publica tus dudas y recibe respuestas de la comunidad.',
+  description: 'Portal para auditar y verificar la veracidad de respuestas generadas por Inteligencia Artificial. Valida información con la comunidad.',
 };
 
 export default function RootLayout({ children }) {

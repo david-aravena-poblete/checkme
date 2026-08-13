@@ -10,24 +10,13 @@ function formatDate(dateString) {
   }
 }
 
-
-function groupByCategory(dudas) {
-  return dudas.reduce((acc, duda) => {
-    const category = duda.category || 'Sin categoría';
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push({
-      ...duda,
-      date: formatDate(duda.createdAt),
-    });
-    return acc;
-  }, {});
-}
-
-
-export async function getDudasByCategory() {
-  const rawDudas = await getDoubtsList();
-  const grouped = groupByCategory(rawDudas);
-  return grouped;
+export async function getValidationsList() {
+  const rawValidations = await getDoubtsList();
+  
+  // En lugar de agrupar por categoría, solo formateamos las fechas 
+  // y devolvemos la lista plana de validaciones
+  return rawValidations.map(validation => ({
+    ...validation,
+    date: formatDate(validation.createdAt)
+  }));
 }
