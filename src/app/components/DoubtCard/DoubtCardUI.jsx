@@ -1,14 +1,16 @@
+import Link from 'next/link';
 import styles from './DoubtCardUI.module.css';
 
-export default function DoubtCardUI({ context, prompt, response, date, status }) {
+export default function DoubtCardUI({ id, context, prompt, response, date, status }) {
   // Truncate response text for preview
   const truncatedResponse = response && response.length > 250 
     ? response.substring(0, 250) + '...' 
     : response;
 
   return (
-    <article className={styles.card}>
-      {/* Context (Acts as Title) */}
+    <Link href={`/validation/${id}`} className={styles.cardLink}>
+      <article className={styles.card}>
+        {/* Context (Acts as Title) */}
       <h3 className={styles.contextText}>{context}</h3>
       
       {/* Prompt block */}
@@ -29,7 +31,8 @@ export default function DoubtCardUI({ context, prompt, response, date, status })
         <span className={`${styles.statusBadge} ${status === 'PENDING' ? styles.statusPending : ''}`}>
           {status === 'PENDING' ? 'En Auditoría' : status}
         </span>
-      </div>
-    </article>
+        </div>
+      </article>
+    </Link>
   );
 }

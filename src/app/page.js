@@ -54,6 +54,7 @@ export default function Home() {
               validations.map((val) => (
                 <DoubtCardUI
                   key={val.id}
+                  id={val.id}
                   context={val.context}
                   prompt={val.prompt}
                   response={val.response}

@@ -1,0 +1,68 @@
+.detailCard {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.contextText {
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.promptBlock {
+  background-color: rgba(94, 138, 126, 0.1);
+  border-left: 4px solid var(--accent);
+  padding: 1.25rem 1.5rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.promptLabel, .responseLabel {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.75rem;
+}
+
+.promptLabel {
+  color: var(--accent);
+}
+
+.responseLabel {
+  color: var(--text-muted);
+}
+
+.promptText {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-style: italic;
+  margin: 0;
+  line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.responseBlock {
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+}
+
+.responseText {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
