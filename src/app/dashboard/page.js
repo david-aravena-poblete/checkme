@@ -58,20 +58,33 @@ export default function DashboardPage() {
   const emptyState = getEmptyStateMessage();
 
   const handlePublishSubmit = async (data) => {
-    try {
-      setIsPublishing(true);
-      const result = await publishValidation(data);
-      if (result.success) {
-        setIsPublishModalOpen(false);
-        // Opcional: mostrar un toast de éxito, recargar las dudas, etc.
-        alert('¡Validación enviada con éxito!');
-      }
-    } catch (error) {
-      alert('Hubo un error al publicar la validación. Intenta de nuevo.');
-    } finally {
-      setIsPublishing(false);
+  try {
+    setIsPublishing(true);
+
+    if (!data.context?.trim()) {
+      throw new Error('Debes ingresar el contexto.');
     }
-  };
+
+    if (!data.question?.trim()) {
+      throw new Error('Debes ingresar la pregunta realizada a la IA.');
+    }
+
+    if (!data.aiResponse?.trim()) {
+      throw new Error('Debes ingresar la respuesta de la IA.');
+    }
+
+    const result = await publishValidation(data);
+
+    if (result.success) {
+      setIsPublishModalOpen(false);
+      alert('¡Publicación creada con éxito!');
+    }
+  } catch (error) {
+    alert(error.message || 'Hubo un error al crear la publicación.');
+  } finally {
+    setIsPublishing(false);
+  }
+};
 
   return (
     <main className={styles.main}>
