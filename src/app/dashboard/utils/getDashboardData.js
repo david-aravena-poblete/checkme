@@ -1,22 +1,17 @@
-import { fetchUserStats, fetchRecommendations } from '../serverless/dashboardApi';
+import { fetchUserStats } from '../serverless/dashboardApi';
 
-export async function getDashboardData() {
+export async function getDashboardData(userId) {
   try {
-    const [stats, recommendations] = await Promise.all([
-      fetchUserStats(),
-      fetchRecommendations()
-    ]);
+    const stats = await fetchUserStats(userId);
 
     return {
-      stats,
-      recommendations
+      stats
     };
   } catch (error) {
     console.error('Error fetching dashboard data', error);
     // Retornamos fallback seguro
     return {
-      stats: { reputation: 0, doubts: 0, verifications: 0 },
-      recommendations: []
+      stats: { reputation: 0, doubts: 0, verifications: 0 }
     };
   }
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthFormUI from './components/AuthForm/AuthFormUI';
+import { loginUser, registerUser } from './utils/auth.utils';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function AuthPage() {
     setConfirmPassword(''); // Clear it when toggling just in case
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
 
@@ -30,10 +31,17 @@ export default function AuthPage() {
       }
     }
 
-    // Aquí en el futuro se llamaría a la capa utils -> serverless.
-    // Por ahora, asumimos éxito y redirigimos.
+    const authAction = mode === 'REGISTER' ? registerUser : loginUser;
+    const result = await authAction(email, password);
+
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+
     console.log(`Éxito en ${mode} con ${email}`);
-    localStorage.setItem('isAuthenticated', 'true');
+    // Opcionalmente guardar info adicional del usuario.
+    // Firebase ya maneja la sesión persistente en IndexedDB/LocalStorage.
     router.push('/dashboard');
   };
 

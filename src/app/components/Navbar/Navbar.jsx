@@ -1,24 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import NavbarUI from './NavbarUI';
+import { useAuth } from '@/app/context/AuthContext';
+import { logoutUser } from '@/app/auth/utils/auth.utils';
 
 export default function Navbar() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    // Revisar si existe una sesión guardada (mock)
-    const isAuth = localStorage.getItem('isAuthenticated') === 'true';
-    setIsAuthenticated(isAuth);
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    setIsAuthenticated(false);
-    router.push('/');
+  const handleLogout = async () => {
+    const result = await logoutUser();
+    if (result.success) {
+      router.push('/');
+    } else {
+      console.error(result.error);
+    }
   };
 
-  return <NavbarUI isAuthenticated={isAuthenticated} onLogout={handleLogout} />;
+  // Convertimos la existencia de 'user' a booleano para pasarlo a la UI
+  return <NavbarUI isAuthenticated={!!user} onLogout={handleLogout} />;
 }

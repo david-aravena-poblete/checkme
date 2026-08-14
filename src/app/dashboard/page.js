@@ -6,29 +6,34 @@ import StatCardUI from './components/StatCardUI/StatCardUI';
 import ActionPanelUI from './components/ActionPanelUI/ActionPanelUI';
 import TabsUI from './components/TabsUI/TabsUI';
 import EmptyStateUI from './components/EmptyStateUI/EmptyStateUI';
-import FeedSidebarUI from './components/FeedSidebarUI/FeedSidebarUI';
 import PublishModalUI from './components/PublishModalUI/PublishModalUI';
 import { getDashboardData } from './utils/getDashboardData';
 import { publishValidation } from './utils/publishValidation';
+import { useAuth } from '@/app/context/AuthContext';
 import styles from './page.module.css';
 
 export default function DashboardPage() {
+  const { user, loading } = useAuth();
+  
   const [activeTab, setActiveTab] = useState('DUDAS');
   const [stats, setStats] = useState({ reputation: 0, doubts: 0, verifications: 0 });
-  const [recommendations, setRecommendations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
   useEffect(() => {
     async function loadData() {
-      const data = await getDashboardData();
+      if (!user) return; // Esperar a que el usuario cargue
+      setIsLoading(true);
+      const data = await getDashboardData(user.uid);
       setStats(data.stats);
-      setRecommendations(data.recommendations);
       setIsLoading(false);
     }
-    loadData();
-  }, []);
+    
+    if (!loading) {
+      loadData();
+    }
+  }, [user, loading]);
 
   const getEmptyStateMessage = () => {
     switch (activeTab) {
@@ -41,8 +46,8 @@ export default function DashboardPage() {
       case 'APORTES':
         return {
           title: 'Sin aportes por ahora',
-          message: 'No has contribuido a verificar respuestas generadas por IA. Revisa las recomendaciones.',
-          cta: 'Ver recomendaciones'
+          message: 'No has contribuido a verificar respuestas generadas por IA. Aquí aparecerán tus verificaciones.',
+          cta: null
         };
       case 'GUARDADOS':
         return {
@@ -58,39 +63,40 @@ export default function DashboardPage() {
   const emptyState = getEmptyStateMessage();
 
   const handlePublishSubmit = async (data) => {
-  try {
-    setIsPublishing(true);
+    try {
+      setIsPublishing(true);
 
-    const user = auth.currentUser;
+      if (!user) {
+        throw new Error('Debes iniciar sesión para publicar.');
+      }
 
-    if (!user) {
-      throw new Error('Debes iniciar sesión para publicar.');
+      if (!data.context?.trim()) {
+        throw new Error('Debes ingresar el contexto.');
+      }
+
+      if (!data.question?.trim()) {
+        throw new Error('Debes ingresar la pregunta realizada a la IA.');
+      }
+
+      if (!data.aiResponse?.trim()) {
+        throw new Error('Debes ingresar la respuesta de la IA.');
+      }
+
+      const result = await publishValidation(data, user);
+
+      if (result.success) {
+        setIsPublishModalOpen(false);
+        alert('¡Publicación creada con éxito!');
+        // Refrescar las estadísticas
+        const newData = await getDashboardData(user.uid);
+        setStats(newData.stats);
+      }
+    } catch (error) {
+      alert(error.message || 'Hubo un error al crear la publicación.');
+    } finally {
+      setIsPublishing(false);
     }
-
-    if (!data.context?.trim()) {
-      throw new Error('Debes ingresar el contexto.');
-    }
-
-    if (!data.question?.trim()) {
-      throw new Error('Debes ingresar la pregunta realizada a la IA.');
-    }
-
-    if (!data.aiResponse?.trim()) {
-      throw new Error('Debes ingresar la respuesta de la IA.');
-    }
-
-    const result = await publishValidation(data, user);
-
-    if (result.success) {
-      setIsPublishModalOpen(false);
-      alert('¡Publicación creada con éxito!');
-    }
-  } catch (error) {
-    alert(error.message || 'Hubo un error al crear la publicación.');
-  } finally {
-    setIsPublishing(false);
-  }
-};
+  };
 
   return (
     <main className={styles.main}>
@@ -111,7 +117,7 @@ export default function DashboardPage() {
             <TabsUI activeTab={activeTab} onTabChange={setActiveTab} />
 
             <div className={styles.tabContent}>
-              {isLoading ? (
+              {isLoading || loading ? (
                 <div className={styles.loading}>Cargando panel...</div>
               ) : (
                 <EmptyStateUI 
@@ -127,15 +133,6 @@ export default function DashboardPage() {
               )}
             </div>
           </section>
-
-          {/* Sidebar Area */}
-          <aside className={styles.sidebar}>
-            {isLoading ? (
-              <div className={styles.loading}>Cargando recomendaciones...</div>
-            ) : (
-              <FeedSidebarUI recommendations={recommendations} />
-            )}
-          </aside>
         </div>
       </div>
 

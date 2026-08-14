@@ -56,8 +56,9 @@ export default function Home() {
                   key={val.id}
                   id={val.id}
                   context={val.context}
-                  prompt={val.prompt}
-                  response={val.response}
+                  question={val.question}
+                  aiResponse={val.aiResponse}
+                  validationCounts={val.validationCounts}
                   date={val.date}
                   status={val.status}
                 />

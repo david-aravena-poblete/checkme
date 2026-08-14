@@ -6,7 +6,7 @@ export default function NavbarUI({ isAuthenticated, onLogout }) {
     <nav className={styles.navbar}>
       <div className={styles.logo}>
         <Link href="/">
-          Check<span className={styles.logoAccent}>Me</span>
+          Valida<span className={styles.logoAccent}>la</span>
         </Link>
       </div>
       <div className={styles.nav}>
