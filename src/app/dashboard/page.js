@@ -61,6 +61,12 @@ export default function DashboardPage() {
   try {
     setIsPublishing(true);
 
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error('Debes iniciar sesión para publicar.');
+    }
+
     if (!data.context?.trim()) {
       throw new Error('Debes ingresar el contexto.');
     }
@@ -73,7 +79,7 @@ export default function DashboardPage() {
       throw new Error('Debes ingresar la respuesta de la IA.');
     }
 
-    const result = await publishValidation(data);
+    const result = await publishValidation(data, user);
 
     if (result.success) {
       setIsPublishModalOpen(false);
