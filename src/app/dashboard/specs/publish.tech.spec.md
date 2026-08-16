@@ -36,5 +36,6 @@
   - Llama a la capa serverless.
 
 - **`publishApi.js` (Serverless):**
-  - Importa `db` de `src/lib/firebase.js`.
-  - Implementa `saveValidationRequestToDB(payload)` usando `addDoc`.
+  - Utiliza `saveStoredPublication` de `src/lib/localStorageDb.js`.
+  - Persiste la nueva publicación en `localStorage`.
+

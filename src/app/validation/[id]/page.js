@@ -1,16 +1,29 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
+import { useRouter } from 'next/navigation';
 import Navbar from '../../components/Navbar/Navbar';
 import ValidationDetailUI from '../components/ValidationDetailUI/ValidationDetailUI';
 import AuditActionsUI from '../components/AuditActionsUI/AuditActionsUI';
 import FeedbackSectionUI from '../components/FeedbackSectionUI/FeedbackSectionUI';
-import { getValidationDetails, getComments, addComment, castVote, checkUserVote } from '../utils/validationUtils';
+import EditDoubtModalUI from '@/app/components/EditDoubtModalUI/EditDoubtModalUI';
+import { 
+  getValidationDetails, 
+  getComments, 
+  addComment, 
+  editComment, 
+  removeComment, 
+  editValidation, 
+  removeValidation, 
+  castVote, 
+  checkUserVote 
+} from '../utils/validationUtils';
 import { useAuth } from '@/app/context/AuthContext';
 import styles from './page.module.css';
 import Link from 'next/link';
 
 export default function ValidationPage({ params }) {
+  const router = useRouter();
   const unwrappedParams = use(params);
   const id = unwrappedParams.id;
   const { user, loading: authLoading } = useAuth();
@@ -22,6 +35,10 @@ export default function ValidationPage({ params }) {
   const [userVote, setUserVote] = useState(null); // 'LIKE' | 'DISLIKE' | null
   const [isVoting, setIsVoting] = useState(false);
   const [error, setError] = useState(null);
+
+  // Estados para modal de edición de duda
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSavingDoubt, setIsSavingDoubt] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -53,6 +70,11 @@ export default function ValidationPage({ params }) {
   }, [id, user, authLoading]);
 
   const handleVote = async (isLike) => {
+    if (!user) {
+      alert('Debes iniciar sesión para auditar esta respuesta.');
+      return;
+    }
+
     const newVoteType = isLike ? 'LIKE' : 'DISLIKE';
     if (userVote === newVoteType || isVoting) return; // Evitar doble submit o votar lo mismo
     
@@ -93,6 +115,11 @@ export default function ValidationPage({ params }) {
   };
 
   const handleAddComment = async (text) => {
+    if (!user) {
+      alert('Debes iniciar sesión para dejar feedback.');
+      return;
+    }
+
     try {
       setIsSubmittingComment(true);
       const newComment = await addComment(id, text, user);
@@ -102,6 +129,69 @@ export default function ValidationPage({ params }) {
       console.error(err);
     } finally {
       setIsSubmittingComment(false);
+    }
+  };
+
+  const handleEditComment = async (commentId, newText) => {
+    if (!user) return;
+    try {
+      await editComment(commentId, newText, user);
+      setComments(prev => 
+        prev.map(c => c.id === commentId ? { ...c, text: newText, updatedAt: new Date().toISOString() } : c)
+      );
+    } catch (err) {
+      alert(err.message || 'Error al editar comentario.');
+      throw err;
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!user) return;
+    try {
+      await removeComment(commentId, user);
+      setComments(prev => prev.filter(c => c.id !== commentId));
+    } catch (err) {
+      alert(err.message || 'Error al eliminar comentario.');
+    }
+  };
+
+  const handleSaveEditedValidation = async (formData) => {
+    try {
+      setIsSavingDoubt(true);
+      if (!user) throw new Error('Debes estar autenticado.');
+      if (!formData.context?.trim() || !formData.question?.trim() || !formData.aiResponse?.trim()) {
+        throw new Error('Todos los campos son obligatorios.');
+      }
+
+      await editValidation(id, formData, user);
+      setValidation(prev => ({
+        ...prev,
+        context: formData.context.trim(),
+        question: formData.question.trim(),
+        prompt: formData.question.trim(),
+        aiResponse: formData.aiResponse.trim(),
+        response: formData.aiResponse.trim(),
+      }));
+      setIsEditModalOpen(false);
+      alert('¡Duda actualizada con éxito!');
+    } catch (err) {
+      alert(err.message || 'Error al actualizar la duda.');
+    } finally {
+      setIsSavingDoubt(false);
+    }
+  };
+
+  const handleDeleteValidation = async () => {
+    const confirmDelete = window.confirm('¿Estás seguro de que deseas eliminar esta duda? Serás redirigido al dashboard.');
+    if (!confirmDelete) return;
+
+    try {
+      if (!user) throw new Error('Debes estar autenticado.');
+      await removeValidation(id, user);
+      alert('Duda eliminada correctamente.');
+      router.push('/dashboard');
+    } catch (err) {
+      alert(err.message || 'Error al eliminar la duda.');
     }
   };
 
@@ -126,11 +216,20 @@ export default function ValidationPage({ params }) {
     );
   }
 
+  const isAuthor = Boolean(user && user.uid === validation.authorId);
+
   return (
     <main className={styles.main}>
       <Navbar />
       <div className={styles.container}>
-        <Link href="/" className={styles.backLink}>&larr; Volver a Auditorías</Link>
+        <div className={styles.navBarRow}>
+          <Link href="/dashboard" className={styles.dashboardButton}>
+            &larr; Volver al Dashboard
+          </Link>
+          <Link href="/" className={styles.backLink}>
+            Ver todas las auditorías
+          </Link>
+        </div>
         
         <div className={styles.contentGrid}>
           {/* Columna Izquierda: Detalle principal */}
@@ -141,6 +240,9 @@ export default function ValidationPage({ params }) {
               prompt={validation.prompt}
               aiResponse={validation.aiResponse}
               response={validation.response}
+              isAuthor={isAuthor}
+              onEdit={() => setIsEditModalOpen(true)}
+              onDelete={handleDeleteValidation}
             />
           </section>
 
@@ -152,17 +254,32 @@ export default function ValidationPage({ params }) {
               onVote={handleVote}
               userVote={userVote}
               isVoting={isVoting}
+              isAuthenticated={!!user}
             />
             
             <FeedbackSectionUI 
               comments={comments}
               onSubmitComment={handleAddComment}
+              onEditComment={handleEditComment}
+              onDeleteComment={handleDeleteComment}
               isSubmitting={isSubmittingComment}
+              isAuthenticated={!!user}
+              currentUserId={user?.uid}
             />
           </aside>
         </div>
       </div>
+
+      <EditDoubtModalUI
+        isOpen={isEditModalOpen}
+        initialData={validation}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveEditedValidation}
+        isSaving={isSavingDoubt}
+      />
     </main>
   );
 }
+
+
 

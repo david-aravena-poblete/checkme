@@ -1,8 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+import { getStoredAuthUser } from '@/lib/localStorageDb';
 
 const AuthContext = createContext({
   user: null,
@@ -16,13 +15,29 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const auth = getAuth(app);
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
+    // Cargar usuario autenticado desde LocalStorage
+    const initialUser = getStoredAuthUser();
+    setUser(initialUser);
+    setLoading(false);
 
-    return () => unsubscribe();
+    // Escuchar cambios de autenticación
+    const handleAuthChange = (event) => {
+      setUser(event.detail);
+    };
+
+    const handleStorage = (event) => {
+      if (event.key === 'checkme_auth_user') {
+        setUser(getStoredAuthUser());
+      }
+    };
+
+    window.addEventListener('checkme_auth_changed', handleAuthChange);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('checkme_auth_changed', handleAuthChange);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   return (
@@ -31,3 +46,4 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+

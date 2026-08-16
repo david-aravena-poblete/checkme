@@ -11,8 +11,8 @@ Usuario autenticado en el Dashboard.
 - El modal tiene el título "Auditar Respuesta de IA".
 
 ### P-02: Llenar y enviar formulario
-- El usuario ingresa texto en el campo "Contexto de la validación".
-- El usuario pega la pregunta en el campo "Prompt entregado a la IA".
+- El usuario ingresa texto en el campo "Contexto" expresando por qué hizo la pregunta a la IA y qué duda o sospecha le genera la respuesta.
+- El usuario pega la pregunta en el campo "Pregunta realizada a la IA".
 - El usuario pega la respuesta en el campo "Respuesta generada por la IA".
 - El usuario hace clic en "Publicar para Validar".
 - (Por ahora) El modal se cierra automáticamente y se asume éxito, mostrando un _log_ o alerta limpia.

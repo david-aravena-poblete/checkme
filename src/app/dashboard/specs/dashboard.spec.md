@@ -23,4 +23,10 @@ Usuario autenticado.
 
 ### U-03: Llamado a la acción rápido
 - El usuario ve el botón "Plantear nueva duda" en el panel de acción (`ActionPanelUI`).
-- (El clic por ahora no lleva a ninguna parte, o muestra una alerta, pero el botón debe resaltar visualmente).
+- Al hacer clic, se abre el modal de publicación de nuevas dudas.
+
+### U-04: Editar y eliminar mis dudas
+- En la pestaña "Mis Dudas", cada tarjeta (`DoubtCardUI`) incluye botones de acción "✏️ Editar" y "🗑️ Eliminar".
+- Al presionar "Editar", se abre `EditDoubtModalUI` con los datos cargados permitiendo modificar contexto, pregunta y respuesta de la IA.
+- Al presionar "Eliminar", se solicita confirmación al usuario y se borra la duda junto con sus comentarios y votos asociados.
+

@@ -1,93 +1,52 @@
-import { doc, getDoc, collection, addDoc, query, where, getDocs, updateDoc, increment, setDoc } from 'firebase/firestore';
+import { 
+  getStoredPublicationById, 
+  getStoredComments, 
+  saveStoredComment, 
+  getUserStoredVote, 
+  saveStoredVote 
+} from '@/lib/localStorageDb';
 
 export async function fetchValidationById(id) {
   try {
-    const { db } = await import('@/lib/firebase');
-    
-    // 1. Intentar consultar en la colección principal 'publications'
-    const pubRef = doc(db, 'publications', id);
-    const pubSnap = await getDoc(pubRef);
-    if (pubSnap.exists()) {
-      const data = pubSnap.data();
-      const createdAt = data.createdAt?.toDate 
-        ? data.createdAt.toDate().toISOString() 
-        : (data.createdAt || new Date().toISOString());
+    const pub = getStoredPublicationById(id);
+    if (!pub) return null;
 
-      return {
-        id: pubSnap.id,
-        ...data,
-        createdAt,
-        // Sincronizar nombres alternativos de campos para compatibilidad
-        prompt: data.question || data.prompt || '',
-        question: data.question || data.prompt || '',
-        response: data.aiResponse || data.response || '',
-        aiResponse: data.aiResponse || data.response || '',
-        likesCount: data.likesCount ?? data.validationCounts?.correct ?? 0,
-        dislikesCount: data.dislikesCount ?? data.validationCounts?.incorrect ?? 0,
-      };
-    }
-
-    // 2. Fallback a la colección 'validations' si existe
-    const valRef = doc(db, 'validations', id);
-    const valSnap = await getDoc(valRef);
-    if (valSnap.exists()) {
-      const data = valSnap.data();
-      return {
-        id: valSnap.id,
-        ...data,
-        prompt: data.question || data.prompt || '',
-        question: data.question || data.prompt || '',
-        response: data.aiResponse || data.response || '',
-        aiResponse: data.aiResponse || data.response || '',
-        likesCount: data.likesCount || 0,
-        dislikesCount: data.dislikesCount || 0,
-      };
-    }
-
-    return null;
+    return {
+      ...pub,
+      prompt: pub.question || pub.prompt || '',
+      question: pub.question || pub.prompt || '',
+      response: pub.aiResponse || pub.response || '',
+      aiResponse: pub.aiResponse || pub.response || '',
+      likesCount: pub.likesCount ?? pub.validationCounts?.correct ?? 0,
+      dislikesCount: pub.dislikesCount ?? pub.validationCounts?.incorrect ?? 0,
+    };
   } catch (error) {
-    console.error('Error fetching validation:', error);
+    console.error('Error fetching validation from LocalStorage:', error);
     return null;
   }
 }
 
 export async function fetchValidationComments(validationId) {
   try {
-    const { db } = await import('@/lib/firebase');
-    const commentsRef = collection(db, 'comments');
-    const q = query(
-      commentsRef, 
-      where('validationId', '==', validationId)
-    );
-    const snapshot = await getDocs(q);
-    
-    const comments = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
-    // Ordenar en memoria para evitar el error de índice compuesto en Firestore
-    return comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    return getStoredComments(validationId);
   } catch (error) {
-    console.error('Error fetching comments:', error);
+    console.error('Error fetching comments from LocalStorage:', error);
     return [];
   }
 }
 
 export async function postValidationComment(validationId, text, userId, userName = 'Usuario Anónimo') {
   try {
-    const { db } = await import('@/lib/firebase');
-    const commentsRef = collection(db, 'comments');
-    const docRef = await addDoc(commentsRef, {
+    const newComment = saveStoredComment({
       validationId,
       text,
       userId,
       userName,
       createdAt: new Date().toISOString()
     });
-    return docRef.id;
+    return newComment.id;
   } catch (error) {
-    console.error('Error posting comment:', error);
+    console.error('Error posting comment to LocalStorage:', error);
     throw error;
   }
 }
@@ -95,15 +54,9 @@ export async function postValidationComment(validationId, text, userId, userName
 export async function getUserVote(validationId, userId) {
   if (!userId) return null;
   try {
-    const { db } = await import('@/lib/firebase');
-    const voteRef = doc(db, 'votes', `${validationId}_${userId}`);
-    const snap = await getDoc(voteRef);
-    if (snap.exists()) {
-      return snap.data().type; // 'LIKE' o 'DISLIKE'
-    }
-    return null;
+    return getUserStoredVote(validationId, userId);
   } catch (error) {
-    console.error('Error fetching user vote:', error);
+    console.error('Error fetching user vote from LocalStorage:', error);
     return null;
   }
 }
@@ -114,73 +67,32 @@ export async function submitValidationVote(validationId, userId, isLike) {
   }
 
   try {
-    const { db } = await import('@/lib/firebase');
-    const newVoteType = isLike ? 'LIKE' : 'DISLIKE';
-    
-    // Obtener voto anterior
-    const voteRef = doc(db, 'votes', `${validationId}_${userId}`);
-    const oldVoteSnap = await getDoc(voteRef);
-    const oldVoteType = oldVoteSnap.exists() ? oldVoteSnap.data().type : null;
-
-    if (oldVoteType === newVoteType) {
-      // Ya votó lo mismo, no hacemos nada
-      return false;
-    }
-
-    // Calcular los incrementos
-    let likesDelta = 0;
-    let dislikesDelta = 0;
-
-    if (newVoteType === 'LIKE') {
-      likesDelta = 1;
-      if (oldVoteType === 'DISLIKE') dislikesDelta = -1;
-    } else {
-      dislikesDelta = 1;
-      if (oldVoteType === 'LIKE') likesDelta = -1;
-    }
-
-    // Actualizar contadores en la publicación
-    const pubRef = doc(db, 'publications', validationId);
-    const pubSnap = await getDoc(pubRef);
-    
-    if (pubSnap.exists()) {
-      const updatePayload = {
-        likesCount: increment(likesDelta),
-        dislikesCount: increment(dislikesDelta),
-      };
-
-      // Si existe validationCounts, sincronizar también
-      if (likesDelta !== 0) {
-        updatePayload['validationCounts.correct'] = increment(likesDelta);
-      }
-      if (dislikesDelta !== 0) {
-        updatePayload['validationCounts.incorrect'] = increment(dislikesDelta);
-      }
-
-      await updateDoc(pubRef, updatePayload);
-    } else {
-      const valRef = doc(db, 'validations', validationId);
-      const valSnap = await getDoc(valRef);
-      if (valSnap.exists()) {
-        await updateDoc(valRef, {
-          likesCount: increment(likesDelta),
-          dislikesCount: increment(dislikesDelta)
-        });
-      }
-    }
-
-    // Guardar nuevo voto
-    await setDoc(voteRef, {
-      validationId,
-      userId,
-      type: newVoteType,
-      updatedAt: new Date().toISOString()
-    });
-    
-    return true;
+    return saveStoredVote(validationId, userId, isLike);
   } catch (error) {
-    console.error('Error submitting vote:', error);
+    console.error('Error submitting vote to LocalStorage:', error);
     throw error;
   }
 }
+
+export async function updateComment(commentId, newText, userId) {
+  const { editStoredComment } = await import('@/lib/localStorageDb');
+  return editStoredComment(commentId, newText, userId);
+}
+
+export async function deleteComment(commentId, userId) {
+  const { deleteStoredComment } = await import('@/lib/localStorageDb');
+  return deleteStoredComment(commentId, userId);
+}
+
+export async function updatePublication(publicationId, data, userId) {
+  const { editStoredPublication } = await import('@/lib/localStorageDb');
+  return editStoredPublication(publicationId, data, userId);
+}
+
+export async function deletePublication(publicationId, userId) {
+  const { deleteStoredPublication } = await import('@/lib/localStorageDb');
+  return deleteStoredPublication(publicationId, userId);
+}
+
+
 

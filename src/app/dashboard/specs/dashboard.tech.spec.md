@@ -24,7 +24,7 @@
 - **`DoubtCardUI`**: (`@/app/components/DoubtCard/DoubtCardUI`): Renderiza tarjeta individual de duda recibiendo `{ id, context, question, aiResponse, date, status, validationCounts }`.
 
 ## Capas Utils y Serverless
-- **`dashboardApi.js` (Serverless)**: Exporta `fetchUserStats(userId)`, `fetchUserDoubts(userId)` y `fetchUserVerifications(userId)` interactuando con Firestore (`publications`, `votes`).
+- **`dashboardApi.js` (Serverless)**: Exporta `fetchUserStats(userId)`, `fetchUserDoubts(userId)` y `fetchUserVerifications(userId)` interactuando con LocalStorage (`publications`, `votes`).
 - **`getDashboardData.js` (Utils)**: Orquesta `fetchUserStats`, `fetchUserDoubts` y `fetchUserVerifications`, formatea fechas en formato regional (es-CL) y retorna `{ stats, myDoubts, myVerifications }`.
 
 

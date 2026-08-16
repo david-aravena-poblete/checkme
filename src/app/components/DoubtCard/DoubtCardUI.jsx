@@ -1,7 +1,17 @@
 import Link from 'next/link';
 import styles from './DoubtCardUI.module.css';
 
-export default function DoubtCardUI({ id, context, question, aiResponse, date, status, validationCounts }) {
+export default function DoubtCardUI({ 
+  id, 
+  context, 
+  question, 
+  aiResponse, 
+  date, 
+  status, 
+  validationCounts,
+  onEdit,
+  onDelete 
+}) {
   // Función auxiliar para truncar texto
   const truncateText = (text, maxLength) => {
     return text && text.length > maxLength 
@@ -11,10 +21,48 @@ export default function DoubtCardUI({ id, context, question, aiResponse, date, s
 
   const counts = validationCounts || { correct: 0, partiallyCorrect: 0, incorrect: 0 };
 
+  const handleEditClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onEdit) onEdit({ id, context, question, aiResponse });
+  };
+
+  const handleDeleteClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onDelete) onDelete(id);
+  };
+
   return (
     <Link href={`/validation/${id}`} className={styles.cardLink}>
       <article className={styles.card}>
-        
+        {(onEdit || onDelete) && (
+          <div className={styles.cardHeader}>
+            <div className={styles.cardActions}>
+              {onEdit && (
+                <button
+                  type="button"
+                  className={`${styles.actionBtn} ${styles.editBtn}`}
+                  onClick={handleEditClick}
+                  title="Editar duda"
+                >
+                  ✏️ Editar
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  type="button"
+                  className={`${styles.actionBtn} ${styles.deleteBtn}`}
+                  onClick={handleDeleteClick}
+                  title="Eliminar duda"
+                >
+                  🗑️ Eliminar
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Context block */}
         <div className={styles.contentBlock}>
           <span className={styles.blockLabel}>Contexto:</span>
@@ -48,3 +96,4 @@ export default function DoubtCardUI({ id, context, question, aiResponse, date, s
     </Link>
   );
 }
+

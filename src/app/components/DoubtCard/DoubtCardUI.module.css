@@ -132,3 +132,43 @@
   background-color: rgba(234, 179, 8, 0.15); /* Yellow/Orange tint */
   color: #fbbf24;
 }
+
+.cardHeader {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -0.5rem;
+}
+
+.cardActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.actionBtn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all var(--transition-fast);
+  z-index: 2;
+}
+
+.editBtn:hover {
+  background-color: var(--accent);
+  color: var(--text-inverse);
+  border-color: var(--accent);
+}
+
+.deleteBtn:hover {
+  background-color: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+

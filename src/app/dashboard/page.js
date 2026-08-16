@@ -7,9 +7,11 @@ import ActionPanelUI from './components/ActionPanelUI/ActionPanelUI';
 import TabsUI from './components/TabsUI/TabsUI';
 import EmptyStateUI from './components/EmptyStateUI/EmptyStateUI';
 import PublishModalUI from './components/PublishModalUI/PublishModalUI';
+import EditDoubtModalUI from '@/app/components/EditDoubtModalUI/EditDoubtModalUI';
 import DoubtCardUI from '@/app/components/DoubtCard/DoubtCardUI';
 import { getDashboardData } from './utils/getDashboardData';
 import { publishValidation } from './utils/publishValidation';
+import { updateUserDoubt, deleteUserDoubt } from './serverless/dashboardApi';
 import { useAuth } from '@/app/context/AuthContext';
 import styles from './page.module.css';
 
@@ -24,14 +26,23 @@ export default function DashboardPage() {
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
+  // Estados para edición de dudas
+  const [editingDoubt, setEditingDoubt] = useState(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const refreshData = async (userId) => {
+    if (!userId) return;
+    const data = await getDashboardData(userId);
+    setStats(data.stats);
+    setMyDoubts(data.myDoubts || []);
+    setMyVerifications(data.myVerifications || []);
+  };
+
   useEffect(() => {
     async function loadData() {
-      if (!user) return; // Esperar a que el usuario cargue
+      if (!user) return;
       setIsLoading(true);
-      const data = await getDashboardData(user.uid);
-      setStats(data.stats);
-      setMyDoubts(data.myDoubts || []);
-      setMyVerifications(data.myVerifications || []);
+      await refreshData(user.uid);
       setIsLoading(false);
     }
     
@@ -86,16 +97,49 @@ export default function DashboardPage() {
       if (result.success) {
         setIsPublishModalOpen(false);
         alert('¡Publicación creada con éxito!');
-        // Refrescar las estadísticas, dudas y verificaciones
-        const newData = await getDashboardData(user.uid);
-        setStats(newData.stats);
-        setMyDoubts(newData.myDoubts || []);
-        setMyVerifications(newData.myVerifications || []);
+        await refreshData(user.uid);
       }
     } catch (error) {
       alert(error.message || 'Hubo un error al crear la publicación.');
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  const handleOpenEditDoubt = (doubt) => {
+    setEditingDoubt(doubt);
+  };
+
+  const handleSaveEditedDoubt = async (formData) => {
+    try {
+      setIsSavingEdit(true);
+      if (!user) throw new Error('Debes estar autenticado.');
+      if (!formData.context?.trim() || !formData.question?.trim() || !formData.aiResponse?.trim()) {
+        throw new Error('Todos los campos son obligatorios.');
+      }
+
+      await updateUserDoubt(formData.id, formData, user.uid);
+      setEditingDoubt(null);
+      alert('¡Duda actualizada con éxito!');
+      await refreshData(user.uid);
+    } catch (error) {
+      alert(error.message || 'Error al actualizar la duda.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDeleteDoubt = async (id) => {
+    const confirmDelete = window.confirm('¿Estás seguro de que deseas eliminar esta duda? Esta acción no se puede deshacer.');
+    if (!confirmDelete) return;
+
+    try {
+      if (!user) throw new Error('Debes estar autenticado.');
+      await deleteUserDoubt(id, user.uid);
+      alert('Duda eliminada correctamente.');
+      await refreshData(user.uid);
+    } catch (error) {
+      alert(error.message || 'Error al eliminar la duda.');
     }
   };
 
@@ -133,6 +177,8 @@ export default function DashboardPage() {
                         date={doubt.date}
                         status={doubt.status}
                         validationCounts={doubt.validationCounts}
+                        onEdit={() => handleOpenEditDoubt(doubt)}
+                        onDelete={() => handleDeleteDoubt(doubt.id)}
                       />
                     ))}
                   </div>
@@ -183,8 +229,17 @@ export default function DashboardPage() {
         onSubmit={handlePublishSubmit}
         isPublishing={isPublishing}
       />
+
+      <EditDoubtModalUI
+        isOpen={Boolean(editingDoubt)}
+        initialData={editingDoubt}
+        onClose={() => setEditingDoubt(null)}
+        onSave={handleSaveEditedDoubt}
+        isSaving={isSavingEdit}
+      />
     </main>
   );
 }
+
 
 

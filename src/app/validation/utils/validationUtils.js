@@ -8,19 +8,13 @@ import {
 
 export function getEffectiveUserId(user) {
   if (user?.uid) return user.uid;
-  if (typeof window === 'undefined') return 'server-user';
-  let anonymousId = localStorage.getItem('checkme_anon_id');
-  if (!anonymousId) {
-    anonymousId = 'anon_' + Math.random().toString(36).substring(2, 11);
-    localStorage.setItem('checkme_anon_id', anonymousId);
-  }
-  return anonymousId;
+  return null;
 }
 
 export function getEffectiveUserName(user) {
   if (user?.displayName) return user.displayName;
   if (user?.email) return user.email.split('@')[0];
-  return 'Usuario Anónimo';
+  return 'Usuario';
 }
 
 export async function getValidationDetails(id) {
@@ -39,9 +33,14 @@ export async function getComments(validationId) {
 }
 
 export async function addComment(validationId, text, user = null) {
-  if (!text || text.trim() === '') throw new Error('El comentario no puede estar vacío');
+  if (!user || !user.uid) {
+    throw new Error('Debes iniciar sesión para dejar un comentario');
+  }
+  if (!text || text.trim() === '') {
+    throw new Error('El comentario no puede estar vacío');
+  }
   
-  const userId = getEffectiveUserId(user);
+  const userId = user.uid;
   const userName = getEffectiveUserName(user);
 
   const commentId = await postValidationComment(validationId, text.trim(), userId, userName);
@@ -56,13 +55,52 @@ export async function addComment(validationId, text, user = null) {
 }
 
 export async function castVote(validationId, isLike, user = null) {
-  const userId = getEffectiveUserId(user);
-  const success = await submitValidationVote(validationId, userId, isLike);
+  if (!user || !user.uid) {
+    throw new Error('Debes iniciar sesión para auditar esta respuesta');
+  }
+  const success = await submitValidationVote(validationId, user.uid, isLike);
   return success;
 }
 
 export async function checkUserVote(validationId, user = null) {
-  const userId = getEffectiveUserId(user);
-  const voteType = await getUserVote(validationId, userId);
+  if (!user || !user.uid) return null;
+  const voteType = await getUserVote(validationId, user.uid);
   return voteType; // 'LIKE' | 'DISLIKE' | null
 }
+
+export async function editComment(commentId, text, user = null) {
+  if (!user || !user.uid) {
+    throw new Error('Debes iniciar sesión para editar un comentario.');
+  }
+  if (!text || text.trim() === '') {
+    throw new Error('El comentario no puede estar vacío.');
+  }
+  const { updateComment } = await import('../serverless/validationApi');
+  return await updateComment(commentId, text.trim(), user.uid);
+}
+
+export async function removeComment(commentId, user = null) {
+  if (!user || !user.uid) {
+    throw new Error('Debes iniciar sesión para eliminar un comentario.');
+  }
+  const { deleteComment } = await import('../serverless/validationApi');
+  return await deleteComment(commentId, user.uid);
+}
+
+export async function editValidation(validationId, data, user = null) {
+  if (!user || !user.uid) {
+    throw new Error('Debes iniciar sesión para editar una duda.');
+  }
+  const { updatePublication } = await import('../serverless/validationApi');
+  return await updatePublication(validationId, data, user.uid);
+}
+
+export async function removeValidation(validationId, user = null) {
+  if (!user || !user.uid) {
+    throw new Error('Debes iniciar sesión para eliminar una duda.');
+  }
+  const { deletePublication } = await import('../serverless/validationApi');
+  return await deletePublication(validationId, user.uid);
+}
+
+

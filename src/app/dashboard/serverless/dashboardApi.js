@@ -1,5 +1,8 @@
-import { collection, query, where, getCountFromServer, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { 
+  getStoredPublications, 
+  getStoredVotes, 
+  getStoredPublicationById 
+} from '@/lib/localStorageDb';
 
 export async function fetchUserStats(userId) {
   if (!userId) {
@@ -7,25 +10,19 @@ export async function fetchUserStats(userId) {
   }
 
   try {
-    // 1. Contar "Mis Dudas" (Publicaciones hechas por el usuario)
-    const publicationsRef = collection(db, 'publications');
-    const qDoubts = query(publicationsRef, where('authorId', '==', userId));
-    const snapshotDoubts = await getCountFromServer(qDoubts);
-    const doubtsCount = snapshotDoubts.data().count;
+    const publications = getStoredPublications();
+    const doubtsCount = publications.filter((p) => p.authorId === userId).length;
 
-    // 2. Contar "Verificaciones" (Votos emitidos por el usuario)
-    const votesRef = collection(db, 'votes');
-    const qVerifications = query(votesRef, where('userId', '==', userId));
-    const snapshotVerifications = await getCountFromServer(qVerifications);
-    const verificationsCount = snapshotVerifications.data().count;
+    const votes = getStoredVotes();
+    const verificationsCount = votes.filter((v) => v.userId === userId).length;
 
     return {
-      reputation: 0, // Placeholder hasta definir la lógica de reputación
+      reputation: 0,
       doubts: doubtsCount,
       verifications: verificationsCount
     };
   } catch (error) {
-    console.error('Error obteniendo estadísticas reales de Firestore:', error);
+    console.error('Error obteniendo estadísticas desde LocalStorage:', error);
     return { reputation: 0, doubts: 0, verifications: 0 };
   }
 }
@@ -36,31 +33,12 @@ export async function fetchUserDoubts(userId) {
   }
 
   try {
-    const publicationsRef = collection(db, 'publications');
-    const q = query(publicationsRef, where('authorId', '==', userId));
-    const snapshot = await getDocs(q);
+    const publications = getStoredPublications();
+    const userDoubts = publications.filter((p) => p.authorId === userId);
 
-    if (snapshot.empty) {
-      return [];
-    }
-
-    const doubts = snapshot.docs.map((docSnap) => {
-      const data = docSnap.data();
-      const createdAt = data.createdAt?.toDate
-        ? data.createdAt.toDate().toISOString()
-        : (data.createdAt || new Date().toISOString());
-
-      return {
-        id: docSnap.id,
-        ...data,
-        createdAt,
-      };
-    });
-
-    // Ordenar descendentemente en memoria para evitar requerir índice compuesto en Firestore
-    return doubts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return userDoubts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   } catch (error) {
-    console.error('Error obteniendo dudas del usuario desde Firestore:', error);
+    console.error('Error obteniendo dudas del usuario desde LocalStorage:', error);
     return [];
   }
 }
@@ -71,62 +49,34 @@ export async function fetchUserVerifications(userId) {
   }
 
   try {
-    const votesRef = collection(db, 'votes');
-    const qVotes = query(votesRef, where('userId', '==', userId));
-    const votesSnapshot = await getDocs(qVotes);
+    const votes = getStoredVotes();
+    const userVotes = votes.filter((v) => v.userId === userId);
 
-    if (votesSnapshot.empty) {
-      return [];
-    }
-
-    const verificationsPromises = votesSnapshot.docs.map(async (voteDoc) => {
-      const voteData = voteDoc.data();
-      const validationId = voteData.validationId;
-      if (!validationId) return null;
-
-      // Consultar la publicación correspondiente
-      const pubRef = doc(db, 'publications', validationId);
-      const pubSnap = await getDoc(pubRef);
-
-      if (!pubSnap.exists()) {
-        // Fallback a colección validations si existiera
-        const valRef = doc(db, 'validations', validationId);
-        const valSnap = await getDoc(valRef);
-        if (!valSnap.exists()) return null;
-
-        const valData = valSnap.data();
-        return {
-          id: valSnap.id,
-          ...valData,
-          userVote: voteData.type,
-          votedAt: voteData.updatedAt || voteData.createdAt || new Date().toISOString(),
-          createdAt: valData.createdAt || new Date().toISOString(),
-        };
-      }
-
-      const pubData = pubSnap.data();
-      const createdAt = pubData.createdAt?.toDate
-        ? pubData.createdAt.toDate().toISOString()
-        : (pubData.createdAt || new Date().toISOString());
+    const verifications = userVotes.map((vote) => {
+      const pub = getStoredPublicationById(vote.validationId);
+      if (!pub) return null;
 
       return {
-        id: pubSnap.id,
-        ...pubData,
-        userVote: voteData.type,
-        votedAt: voteData.updatedAt || voteData.createdAt || createdAt,
-        createdAt,
+        ...pub,
+        userVote: vote.type,
+        votedAt: vote.updatedAt || pub.createdAt,
       };
-    });
+    }).filter(Boolean);
 
-    const results = await Promise.all(verificationsPromises);
-    const validVerifications = results.filter(Boolean);
-
-    // Ordenar descendentemente por fecha de voto/creación
-    return validVerifications.sort((a, b) => new Date(b.votedAt || b.createdAt) - new Date(a.votedAt || a.createdAt));
+    return verifications.sort((a, b) => new Date(b.votedAt || b.createdAt) - new Date(a.votedAt || a.createdAt));
   } catch (error) {
-    console.error('Error obteniendo verificaciones del usuario desde Firestore:', error);
+    console.error('Error obteniendo verificaciones del usuario desde LocalStorage:', error);
     return [];
   }
 }
 
+export async function updateUserDoubt(id, data, userId) {
+  const { editStoredPublication } = await import('@/lib/localStorageDb');
+  return editStoredPublication(id, data, userId);
+}
+
+export async function deleteUserDoubt(id, userId) {
+  const { deleteStoredPublication } = await import('@/lib/localStorageDb');
+  return deleteStoredPublication(id, userId);
+}
 

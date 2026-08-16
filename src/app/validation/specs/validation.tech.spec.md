@@ -24,12 +24,13 @@
   - Renderiza context, prompt/question y response/aiResponse con tarjetas semánticas.
 
 - **`AuditActionsUI`**:
-  - Props: `{ likesCount: number, dislikesCount: number, onVote: (isLike: boolean) => void, userVote: string | null, isVoting: boolean }`
-  - Renderiza botones interactivos de auditoría con contadores y estado activo.
+  - Props: `{ likesCount: number, dislikesCount: number, onVote: (isLike: boolean) => void, userVote: string | null, isVoting: boolean, isAuthenticated: boolean }`
+  - Renderiza botones interactivos de auditoría o aviso para iniciar sesión si `!isAuthenticated`.
 
 - **`FeedbackSectionUI`**:
-  - Props: `{ comments: Array<Comment>, onSubmitComment: (text: string) => void, isSubmitting: boolean }`
-  - Renderiza formulario de ingreso de feedback y lista de comentarios.
+  - Props: `{ comments: Array<Comment>, onSubmitComment: (text: string) => void, isSubmitting: boolean, isAuthenticated: boolean }`
+  - Renderiza formulario de ingreso de feedback (si `isAuthenticated`) o aviso para iniciar sesión, y la lista de comentarios.
+
 
 ## Capas Utils y Serverless
 
@@ -41,8 +42,9 @@
   - `checkUserVote(validationId, user)`: Llama a `getUserVote`.
 
 - **`validationApi.js` (Serverless)**:
-  - `fetchValidationById(id)`: Consulta `doc(db, 'publications', id)`.
-  - `fetchValidationComments(validationId)`: Consulta `collection(db, 'comments')` con `where('validationId', '==', validationId)` y ordena por `createdAt` ascendente.
-  - `postValidationComment(validationId, text, userId, userName)`: Agrega documento a `comments`.
-  - `getUserVote(validationId, userId)`: Consulta `doc(db, 'votes', `${validationId}_${userId}`)`.
-  - `submitValidationVote(validationId, userId, isLike)`: Registra en `votes` y actualiza contadores `likesCount`/`dislikesCount` en `publications`.
+  - `fetchValidationById(id)`: Consulta la publicación desde `localStorageDb`.
+  - `fetchValidationComments(validationId)`: Consulta comentarios de `localStorageDb`.
+  - `postValidationComment(validationId, text, userId, userName)`: Agrega comentario a `localStorageDb`.
+  - `getUserVote(validationId, userId)`: Consulta voto desde `localStorageDb`.
+  - `submitValidationVote(validationId, userId, isLike)`: Registra voto y actualiza contadores en `localStorageDb`.
+

@@ -1,15 +1,10 @@
-import {
-  addDoc,
-  collection,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { db } from '../../../lib/firebase';
+import { saveStoredPublication } from '@/lib/localStorageDb';
 
 export async function createPublication(payload) {
-  const publicationsRef = collection(db, 'publications');
-
   const publication = {
     authorId: payload.authorId,
+    authorName: payload.authorName || 'Usuario',
+    authorEmail: payload.authorEmail || '',
     context: payload.context,
     question: payload.question,
     aiResponse: payload.aiResponse,
@@ -19,11 +14,12 @@ export async function createPublication(payload) {
       incorrect: 0,
     },
     validationCount: 0,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    likesCount: 0,
+    dislikesCount: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
-  const docRef = await addDoc(publicationsRef, publication);
-
-  return docRef.id;
+  const saved = saveStoredPublication(publication);
+  return saved.id;
 }

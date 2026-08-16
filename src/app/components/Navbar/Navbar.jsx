@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import NavbarUI from './NavbarUI';
 import { useAuth } from '@/app/context/AuthContext';
 import { logoutUser } from '@/app/auth/utils/auth.utils';
@@ -8,6 +8,7 @@ import { logoutUser } from '@/app/auth/utils/auth.utils';
 export default function Navbar() {
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     const result = await logoutUser();
@@ -18,6 +19,13 @@ export default function Navbar() {
     }
   };
 
-  // Convertimos la existencia de 'user' a booleano para pasarlo a la UI
-  return <NavbarUI isAuthenticated={!!user} onLogout={handleLogout} />;
+  // Convertimos la existencia de 'user' a booleano y pasamos la ruta actual para la navegación contextual
+  return (
+    <NavbarUI 
+      isAuthenticated={!!user} 
+      onLogout={handleLogout} 
+      currentPath={pathname}
+    />
+  );
 }
+

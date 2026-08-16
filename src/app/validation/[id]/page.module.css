@@ -9,12 +9,38 @@
   padding: 2rem;
 }
 
+.navBarRow {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.dashboardButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--accent);
+  color: var(--text-inverse);
+  padding: 0.55rem 1.15rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.dashboardButton:hover {
+  background-color: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
 .backLink {
   display: inline-block;
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 0.95rem;
-  margin-bottom: 2rem;
   transition: color var(--transition-fast);
 }
 

@@ -40,8 +40,7 @@ export default function AuthPage() {
     }
 
     console.log(`Éxito en ${mode} con ${email}`);
-    // Opcionalmente guardar info adicional del usuario.
-    // Firebase ya maneja la sesión persistente en IndexedDB/LocalStorage.
+    // La sesión persistente se maneja en LocalStorage
     router.push('/dashboard');
   };
 
