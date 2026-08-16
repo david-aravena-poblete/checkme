@@ -6,18 +6,20 @@ import ValidationDetailUI from '../components/ValidationDetailUI/ValidationDetai
 import AuditActionsUI from '../components/AuditActionsUI/AuditActionsUI';
 import FeedbackSectionUI from '../components/FeedbackSectionUI/FeedbackSectionUI';
 import { getValidationDetails, getComments, addComment, castVote, checkUserVote } from '../utils/validationUtils';
+import { useAuth } from '@/app/context/AuthContext';
 import styles from './page.module.css';
 import Link from 'next/link';
 
 export default function ValidationPage({ params }) {
   const unwrappedParams = use(params);
   const id = unwrappedParams.id;
+  const { user, loading: authLoading } = useAuth();
   
   const [validation, setValidation] = useState(null);
   const [comments, setComments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [userVote, setUserVote] = useState(null); // 'LIKE' o 'DISLIKE' o null
+  const [userVote, setUserVote] = useState(null); // 'LIKE' | 'DISLIKE' | null
   const [isVoting, setIsVoting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -32,20 +34,23 @@ export default function ValidationPage({ params }) {
           // Consultar en paralelo comentarios y el voto del usuario actual
           const [commData, voteData] = await Promise.all([
             getComments(id),
-            checkUserVote(id)
+            checkUserVote(id, user)
           ]);
           setComments(commData);
           setUserVote(voteData);
         }
       } catch (err) {
-        console.error(err);
+        console.error('Error al cargar la validación:', err);
         setError('Error al cargar la validación');
       } finally {
         setIsLoading(false);
       }
     }
-    fetchData();
-  }, [id]);
+
+    if (!authLoading) {
+      fetchData();
+    }
+  }, [id, user, authLoading]);
 
   const handleVote = async (isLike) => {
     const newVoteType = isLike ? 'LIKE' : 'DISLIKE';
@@ -54,11 +59,12 @@ export default function ValidationPage({ params }) {
     setIsVoting(true);
     const previousVote = userVote;
     
-    // Optistic update
+    // Optimistic update
     setUserVote(newVoteType);
     setValidation(prev => {
-      let lCount = prev.likesCount;
-      let dCount = prev.dislikesCount;
+      if (!prev) return prev;
+      let lCount = Number(prev.likesCount || 0);
+      let dCount = Number(prev.dislikesCount || 0);
       
       if (newVoteType === 'LIKE') {
         lCount++;
@@ -67,17 +73,17 @@ export default function ValidationPage({ params }) {
         dCount++;
         if (previousVote === 'LIKE') lCount--;
       }
-      return { ...prev, likesCount: lCount, dislikesCount: dCount };
+      return { ...prev, likesCount: Math.max(0, lCount), dislikesCount: Math.max(0, dCount) };
     });
 
     try {
-      const success = await castVote(id, isLike);
+      const success = await castVote(id, isLike, user);
       if (!success) {
-        // Rollback si por alguna razón falla (ej: ya había votado igual simultáneamente)
-        // No es estrictamente necesario aquí dado que controlamos el state arriba.
+        // Rollback si por alguna razón falló
+        setUserVote(previousVote);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error al emitir voto:', err);
       // Rollback
       setUserVote(previousVote);
       alert("Hubo un error al guardar tu voto.");
@@ -89,7 +95,7 @@ export default function ValidationPage({ params }) {
   const handleAddComment = async (text) => {
     try {
       setIsSubmittingComment(true);
-      const newComment = await addComment(id, text);
+      const newComment = await addComment(id, text, user);
       setComments(prev => [...prev, newComment]);
     } catch (err) {
       alert('Error al añadir el comentario');
@@ -99,7 +105,7 @@ export default function ValidationPage({ params }) {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <main className={styles.main}>
         <Navbar />
@@ -113,7 +119,7 @@ export default function ValidationPage({ params }) {
       <main className={styles.main}>
         <Navbar />
         <div className={styles.centerContainer}>
-          <h2>{error}</h2>
+          <h2>{error || 'Validación no encontrada'}</h2>
           <Link href="/" className={styles.backLink}>Volver al Inicio</Link>
         </div>
       </main>
@@ -131,7 +137,9 @@ export default function ValidationPage({ params }) {
           <section className={styles.mainSection}>
             <ValidationDetailUI 
               context={validation.context}
+              question={validation.question}
               prompt={validation.prompt}
+              aiResponse={validation.aiResponse}
               response={validation.response}
             />
           </section>
@@ -157,3 +165,4 @@ export default function ValidationPage({ params }) {
     </main>
   );
 }
+

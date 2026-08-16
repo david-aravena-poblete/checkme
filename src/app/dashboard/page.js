@@ -7,6 +7,7 @@ import ActionPanelUI from './components/ActionPanelUI/ActionPanelUI';
 import TabsUI from './components/TabsUI/TabsUI';
 import EmptyStateUI from './components/EmptyStateUI/EmptyStateUI';
 import PublishModalUI from './components/PublishModalUI/PublishModalUI';
+import DoubtCardUI from '@/app/components/DoubtCard/DoubtCardUI';
 import { getDashboardData } from './utils/getDashboardData';
 import { publishValidation } from './utils/publishValidation';
 import { useAuth } from '@/app/context/AuthContext';
@@ -17,6 +18,8 @@ export default function DashboardPage() {
   
   const [activeTab, setActiveTab] = useState('DUDAS');
   const [stats, setStats] = useState({ reputation: 0, doubts: 0, verifications: 0 });
+  const [myDoubts, setMyDoubts] = useState([]);
+  const [myVerifications, setMyVerifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -27,6 +30,8 @@ export default function DashboardPage() {
       setIsLoading(true);
       const data = await getDashboardData(user.uid);
       setStats(data.stats);
+      setMyDoubts(data.myDoubts || []);
+      setMyVerifications(data.myVerifications || []);
       setIsLoading(false);
     }
     
@@ -43,16 +48,10 @@ export default function DashboardPage() {
           message: 'Parece que no has publicado ninguna respuesta de IA para validar. ¡Anímate y súbela!',
           cta: 'Plantear nueva duda'
         };
-      case 'APORTES':
+      case 'VERIFICACIONES':
         return {
-          title: 'Sin aportes por ahora',
-          message: 'No has contribuido a verificar respuestas generadas por IA. Aquí aparecerán tus verificaciones.',
-          cta: null
-        };
-      case 'GUARDADOS':
-        return {
-          title: 'No hay elementos guardados',
-          message: 'Cuando veas una respuesta de IA interesante, guárdala para auditarla más tarde.',
+          title: 'Sin verificaciones por ahora',
+          message: 'No has auditado ninguna respuesta de IA. ¡Explora las publicaciones de la comunidad y aporta tu veredicto!',
           cta: null
         };
       default:
@@ -87,9 +86,11 @@ export default function DashboardPage() {
       if (result.success) {
         setIsPublishModalOpen(false);
         alert('¡Publicación creada con éxito!');
-        // Refrescar las estadísticas
+        // Refrescar las estadísticas, dudas y verificaciones
         const newData = await getDashboardData(user.uid);
         setStats(newData.stats);
+        setMyDoubts(newData.myDoubts || []);
+        setMyVerifications(newData.myVerifications || []);
       }
     } catch (error) {
       alert(error.message || 'Hubo un error al crear la publicación.');
@@ -119,18 +120,58 @@ export default function DashboardPage() {
             <div className={styles.tabContent}>
               {isLoading || loading ? (
                 <div className={styles.loading}>Cargando panel...</div>
-              ) : (
-                <EmptyStateUI 
-                  title={emptyState.title} 
-                  message={emptyState.message} 
-                  ctaText={emptyState.cta} 
-                  onCtaClick={
-                    emptyState.cta === 'Plantear nueva duda' 
-                      ? () => setIsPublishModalOpen(true) 
-                      : undefined
-                  }
-                />
-              )}
+              ) : activeTab === 'DUDAS' ? (
+                myDoubts.length > 0 ? (
+                  <div className={styles.doubtsGrid}>
+                    {myDoubts.map((doubt) => (
+                      <DoubtCardUI
+                        key={doubt.id}
+                        id={doubt.id}
+                        context={doubt.context}
+                        question={doubt.question}
+                        aiResponse={doubt.aiResponse}
+                        date={doubt.date}
+                        status={doubt.status}
+                        validationCounts={doubt.validationCounts}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyStateUI 
+                    title={emptyState.title} 
+                    message={emptyState.message} 
+                    ctaText={emptyState.cta} 
+                    onCtaClick={
+                      emptyState.cta === 'Plantear nueva duda' 
+                        ? () => setIsPublishModalOpen(true) 
+                        : undefined
+                    }
+                  />
+                )
+              ) : activeTab === 'VERIFICACIONES' ? (
+                myVerifications.length > 0 ? (
+                  <div className={styles.doubtsGrid}>
+                    {myVerifications.map((item) => (
+                      <DoubtCardUI
+                        key={item.id}
+                        id={item.id}
+                        context={item.context}
+                        question={item.question}
+                        aiResponse={item.aiResponse}
+                        date={item.date}
+                        status={item.status}
+                        validationCounts={item.validationCounts}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyStateUI 
+                    title={emptyState.title} 
+                    message={emptyState.message} 
+                    ctaText={emptyState.cta} 
+                  />
+                )
+              ) : null}
             </div>
           </section>
         </div>
@@ -145,3 +186,5 @@ export default function DashboardPage() {
     </main>
   );
 }
+
+

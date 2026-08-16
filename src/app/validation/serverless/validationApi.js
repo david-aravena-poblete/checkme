@@ -1,14 +1,49 @@
-import { doc, getDoc, collection, addDoc, query, where, getDocs, orderBy, updateDoc, increment, setDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, query, where, getDocs, updateDoc, increment, setDoc } from 'firebase/firestore';
 
 export async function fetchValidationById(id) {
   try {
     const { db } = await import('@/lib/firebase');
-    const docRef = doc(db, 'validations', id);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() };
+    
+    // 1. Intentar consultar en la colección principal 'publications'
+    const pubRef = doc(db, 'publications', id);
+    const pubSnap = await getDoc(pubRef);
+    if (pubSnap.exists()) {
+      const data = pubSnap.data();
+      const createdAt = data.createdAt?.toDate 
+        ? data.createdAt.toDate().toISOString() 
+        : (data.createdAt || new Date().toISOString());
+
+      return {
+        id: pubSnap.id,
+        ...data,
+        createdAt,
+        // Sincronizar nombres alternativos de campos para compatibilidad
+        prompt: data.question || data.prompt || '',
+        question: data.question || data.prompt || '',
+        response: data.aiResponse || data.response || '',
+        aiResponse: data.aiResponse || data.response || '',
+        likesCount: data.likesCount ?? data.validationCounts?.correct ?? 0,
+        dislikesCount: data.dislikesCount ?? data.validationCounts?.incorrect ?? 0,
+      };
     }
-    // Si no existe en BD, podríamos buscar en los Mocks, pero como es DB real, retornamos null
+
+    // 2. Fallback a la colección 'validations' si existe
+    const valRef = doc(db, 'validations', id);
+    const valSnap = await getDoc(valRef);
+    if (valSnap.exists()) {
+      const data = valSnap.data();
+      return {
+        id: valSnap.id,
+        ...data,
+        prompt: data.question || data.prompt || '',
+        question: data.question || data.prompt || '',
+        response: data.aiResponse || data.response || '',
+        aiResponse: data.aiResponse || data.response || '',
+        likesCount: data.likesCount || 0,
+        dislikesCount: data.dislikesCount || 0,
+      };
+    }
+
     return null;
   } catch (error) {
     console.error('Error fetching validation:', error);
@@ -35,7 +70,6 @@ export async function fetchValidationComments(validationId) {
     return comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   } catch (error) {
     console.error('Error fetching comments:', error);
-    // Para simplificar si faltan índices, retornamos arreglo vacío
     return [];
   }
 }
@@ -59,6 +93,7 @@ export async function postValidationComment(validationId, text, userId, userName
 }
 
 export async function getUserVote(validationId, userId) {
+  if (!userId) return null;
   try {
     const { db } = await import('@/lib/firebase');
     const voteRef = doc(db, 'votes', `${validationId}_${userId}`);
@@ -74,6 +109,10 @@ export async function getUserVote(validationId, userId) {
 }
 
 export async function submitValidationVote(validationId, userId, isLike) {
+  if (!userId) {
+    throw new Error('Debes contar con un identificador de usuario para votar');
+  }
+
   try {
     const { db } = await import('@/lib/firebase');
     const newVoteType = isLike ? 'LIKE' : 'DISLIKE';
@@ -100,12 +139,35 @@ export async function submitValidationVote(validationId, userId, isLike) {
       if (oldVoteType === 'LIKE') likesDelta = -1;
     }
 
-    // Actualizar contadores
-    const valRef = doc(db, 'validations', validationId);
-    await updateDoc(valRef, {
-      likesCount: increment(likesDelta),
-      dislikesCount: increment(dislikesDelta)
-    });
+    // Actualizar contadores en la publicación
+    const pubRef = doc(db, 'publications', validationId);
+    const pubSnap = await getDoc(pubRef);
+    
+    if (pubSnap.exists()) {
+      const updatePayload = {
+        likesCount: increment(likesDelta),
+        dislikesCount: increment(dislikesDelta),
+      };
+
+      // Si existe validationCounts, sincronizar también
+      if (likesDelta !== 0) {
+        updatePayload['validationCounts.correct'] = increment(likesDelta);
+      }
+      if (dislikesDelta !== 0) {
+        updatePayload['validationCounts.incorrect'] = increment(dislikesDelta);
+      }
+
+      await updateDoc(pubRef, updatePayload);
+    } else {
+      const valRef = doc(db, 'validations', validationId);
+      const valSnap = await getDoc(valRef);
+      if (valSnap.exists()) {
+        await updateDoc(valRef, {
+          likesCount: increment(likesDelta),
+          dislikesCount: increment(dislikesDelta)
+        });
+      }
+    }
 
     // Guardar nuevo voto
     await setDoc(voteRef, {
@@ -121,3 +183,4 @@ export async function submitValidationVote(validationId, userId, isLike) {
     throw error;
   }
 }
+

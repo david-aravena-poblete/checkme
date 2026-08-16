@@ -3,8 +3,7 @@ import styles from './TabsUI.module.css';
 export default function TabsUI({ activeTab, onTabChange }) {
   const tabs = [
     { id: 'DUDAS', label: 'Mis Dudas' },
-    { id: 'APORTES', label: 'Mis Aportes' },
-    { id: 'GUARDADOS', label: 'Guardados' }
+    { id: 'VERIFICACIONES', label: 'Mis Verificaciones' }
   ];
 
   return (

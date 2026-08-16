@@ -1,30 +1,36 @@
 import { 
   fetchValidationById, 
   fetchValidationComments, 
-  postValidationComment,
-  submitValidationVote,
-  getUserVote
+  postValidationComment, 
+  submitValidationVote, 
+  getUserVote 
 } from '../serverless/validationApi';
 
-export function getLocalUserId() {
+export function getEffectiveUserId(user) {
+  if (user?.uid) return user.uid;
   if (typeof window === 'undefined') return 'server-user';
-  let userId = localStorage.getItem('checkme_user_id');
-  if (!userId) {
-    userId = 'anon_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('checkme_user_id', userId);
+  let anonymousId = localStorage.getItem('checkme_anon_id');
+  if (!anonymousId) {
+    anonymousId = 'anon_' + Math.random().toString(36).substring(2, 11);
+    localStorage.setItem('checkme_anon_id', anonymousId);
   }
-  return userId;
+  return anonymousId;
+}
+
+export function getEffectiveUserName(user) {
+  if (user?.displayName) return user.displayName;
+  if (user?.email) return user.email.split('@')[0];
+  return 'Usuario Anónimo';
 }
 
 export async function getValidationDetails(id) {
   const data = await fetchValidationById(id);
   if (!data) return null;
   
-  // Format dates if needed, or set default values
   return {
     ...data,
-    likesCount: data.likesCount || 0,
-    dislikesCount: data.dislikesCount || 0
+    likesCount: Number(data.likesCount || 0),
+    dislikesCount: Number(data.dislikesCount || 0)
   };
 }
 
@@ -32,43 +38,31 @@ export async function getComments(validationId) {
   return await fetchValidationComments(validationId);
 }
 
-export async function addComment(validationId, text) {
+export async function addComment(validationId, text, user = null) {
   if (!text || text.trim() === '') throw new Error('El comentario no puede estar vacío');
   
-  // Obtener usuario
-  let userId = getLocalUserId();
-  let userName = 'Usuario Anónimo';
-  
-  if (typeof window !== 'undefined') {
-    const storedAuth = localStorage.getItem('auth');
-    if (storedAuth) {
-      const parsedAuth = JSON.parse(storedAuth);
-      if (parsedAuth.isAuthenticated) {
-        userId = parsedAuth.user?.email || 'auth-user';
-        userName = 'Miembro Verificado';
-      }
-    }
-  }
+  const userId = getEffectiveUserId(user);
+  const userName = getEffectiveUserName(user);
 
-  const commentId = await postValidationComment(validationId, text, userId, userName);
+  const commentId = await postValidationComment(validationId, text.trim(), userId, userName);
   return {
     id: commentId,
     validationId,
-    text,
+    text: text.trim(),
     userId,
     userName,
     createdAt: new Date().toISOString()
   };
 }
 
-export async function castVote(validationId, isLike) {
-  const userId = getLocalUserId();
+export async function castVote(validationId, isLike, user = null) {
+  const userId = getEffectiveUserId(user);
   const success = await submitValidationVote(validationId, userId, isLike);
   return success;
 }
 
-export async function checkUserVote(validationId) {
-  const userId = getLocalUserId();
+export async function checkUserVote(validationId, user = null) {
+  const userId = getEffectiveUserId(user);
   const voteType = await getUserVote(validationId, userId);
   return voteType; // 'LIKE' | 'DISLIKE' | null
 }
